@@ -28,6 +28,7 @@ def create(policy, **kwargs):
     if policy == "NovaCoin":        return NovaCoin(**kwargs)
     if policy == "CryptoCash":      return CryptoCash(**kwargs)
     if policy == "Hirocoin":        return Hirocoin(**kwargs)
+    if policy == "Dilmacoin":       return Dilmacoin(**kwargs)
     if policy == "X11":             return X11Chain(**kwargs)
     return Sha256NmcAuxPowChain(**kwargs)
 
@@ -365,4 +366,16 @@ class Hirocoin(X11Chain):
     datadir_conf_file_name = 'hirocoin.conf'
     datadir_rpcport = 9347
     datadir_p2pport = 9348
+
+class Dilmacoin(X11Chain):
+    def __init__(chain, **kwargs):
+        chain.name = 'Dilmacoin'
+        chain.code3 = 'HUE'
+        chain.address_version = '\x1e'
+        chain.magic = '\xc0\xc0\xc0\xc0'
+        Chain.__init__(chain, **kwargs)
+
+    datadir_conf_file_name = 'dilmacoin.conf'
+    datadir_rpcport = 21057
+    datadir_p2pport = 11057
 
