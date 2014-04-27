@@ -39,16 +39,17 @@ import base58
 
 __version__ = version.__version__
 
-ABE_APPNAME = "Abe"
+ABE_APPNAME = "Dilmacoin"
 ABE_VERSION = __version__
-ABE_URL = 'https://github.com/bitcoin-abe/bitcoin-abe'
+ABE_URL = 'https://github.com/Dilmacoin/dilmacoin-abe'
 
-COPYRIGHT_YEARS = '2011'
-COPYRIGHT = "Abe developers"
-COPYRIGHT_URL = 'https://github.com/bitcoin-abe'
+COPYRIGHT_YEARS = '2011-2014'
+COPYRIGHT = "Dilmacoin developers"
+COPYRIGHT_URL = 'https://github.com/Dilmacoin/dilmacoin-abe'
 
 DONATIONS_BTC = '1PWC7PNHL1SgvZaN7xEtygenKjWobWsCuf'
 DONATIONS_NMC = 'NJ3MSELK1cWnqUa6xhF2wUYAnz3RSrWXcK'
+DONATIONS_HUE = 'DKHxkCW81KeQ38sAEB9n1FMhBkZzn7cfsr'
 
 TIME1970 = time.strptime('1970-01-01','%Y-%m-%d')
 EPOCH1970 = calendar.timegm(TIME1970)
@@ -62,26 +63,42 @@ DEFAULT_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="stylesheet" type="text/css"
-     href="%(dotdot)s%(STATIC_PATH)sabe.css" />
+    <link rel="stylesheet" type="text/css" href="%(dotdot)s%(STATIC_PATH)sabe-dilmacoin.css" />
     <link rel="shortcut icon" href="%(dotdot)s%(STATIC_PATH)sfavicon.ico" />
     <title>%(title)s</title>
+    <meta name="description" content="Dilmacoin Blockchain by Coinexplorers.com">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-    <h1><a href="%(dotdot)s%(HOMEPAGE)s"><img
-     src="%(dotdot)s%(STATIC_PATH)slogo32.png" alt="Abe logo" /></a> %(h1)s
-    </h1>
-    %(body)s
-    <p><a href="%(dotdot)sq">API</a> (machine-readable pages)</p>
-    <p style="font-size: smaller">
-        <span style="font-style: italic">
-            Powered by <a href="%(ABE_URL)s">%(APPNAME)s</a>
-        </span>
-        %(download)s
-        Tips appreciated!
-        <a href="%(dotdot)saddress/%(DONATIONS_BTC)s">BTC</a>
-        <a href="%(dotdot)saddress/%(DONATIONS_NMC)s">NMC</a>
-    </p>
+    <div class="container"> 
+        <div class="navbar navbar-default">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="/">Dilmacoin Explorer</a>
+            </div>
+        <div class="navbar-collapse collapse ">
+            <ul class="nav navbar-nav">
+                <li><a href="%(dotdot)sstatistics">Statistics</a></li>
+                <li><a href="%(dotdot)s%(STATIC_PATH)sdonate">Donate</a></li>
+                <li><a href="%(dotdot)sq">API</a></li>
+            </ul>
+            <form action="/search" class="navbar-form navbar-right" role="search">
+                <div class="form-group">
+                    <input type="text" name="q" size="50" class="form-control" placeholder="Search by address, block number or hash, transaction">
+                </div>
+                <button type="submit" class="btn btn-default">Search</button>
+            </form>
+        </div>
+    </div>
+    <h1><a href="%(dotdot)s%(HOMEPAGE)s"><img src="%(dotdot)s%(STATIC_PATH)sdilma32.png" alt="Abe logo" /></a> %(h1)s</h1>
+    <div class="panel panel-default">
+        %(body)s
+        <div class="panel-footer"> 
+            <p style="font-size: smaller">
+                <span style="font-style: italic">Powered by <a href="%(ABE_URL)s">%(APPNAME)s</a></span>%(download)s
+            <span style="float:right">DilmaCoin - <a href="%(dotdot)saddress/%(DONATIONS_HUE)s">%(DONATIONS_HUE)s</a> - Tips appreciated!</span>
+            </p>
+        </div>
+    </div>
 </body>
 </html>
 """
@@ -250,9 +267,9 @@ class Abe:
             handler(page)
         except PageNotFound:
             status = '404 Not Found'
-            page['body'] = ['<p class="error">Sorry, ', env['SCRIPT_NAME'],
+            page['body'] = ['<div class="panel-body"><p class="error">Sorry, ', env['SCRIPT_NAME'],
                             env['PATH_INFO'],
-                            ' does not exist on this server.</p>']
+                            ' does not exist on this server.</p></div>']
         except NoSuchChainError, e:
             page['body'] += [
                 '<p class="error">'
@@ -288,9 +305,10 @@ class Abe:
     def handle_chains(abe, page):
         page['title'] = ABE_APPNAME + ' Search'
         body = page['body']
+        body += '<div class="panel-body">'
         body += [
             abe.search_form(page),
-            '<table>\n',
+            '<table class="table table-striped table-hover ">\n',
             '<tr><th>Currency</th><th>Code</th><th>Block</th><th>Time</th>',
             '<th>Started</th><th>Age (days)</th><th>Coins Created</th>',
             '<th>Avg Coin Age</th><th>',
@@ -363,6 +381,7 @@ class Abe:
         body += ['</table>\n']
         if len(rows) == 0:
             body += ['<p>No block data found.</p>\n']
+        body += '</div>'
 
     def chain_lookup_by_name(abe, symbol):
         if symbol is None:
@@ -412,6 +431,7 @@ class Abe:
         page['title'] = chain.name
 
         body = page['body']
+        body += '<div class="panel-body">'
         body += abe.search_form(page)
 
         count = get_int_param(page, 'count') or 20
@@ -433,7 +453,7 @@ class Abe:
             else:
                 body += ['<p class="error">'
                          'The requested range contains no blocks.</p>\n']
-            return
+        body += '</div>'
 
         rows = abe.store.selectall("""
             SELECT b.block_hash, b.block_height, b.block_nTime, b.block_num_tx,
@@ -481,7 +501,7 @@ class Abe:
         extra = False
         #extra = True
         body += ['<p>', nav, '</p>\n',
-                 '<table><tr><th>Block</th><th>Approx. Time</th>',
+                 '<table class="table table-striped table-hover "><tr><th>Block</th><th>Approx. Time</th>',
                  '<th>Transactions</th><th>Value Out</th>',
                  '<th>Difficulty</th><th>Outstanding</th>',
                  '<th>Average Age</th><th>Chain Age</th>',
@@ -558,6 +578,7 @@ class Abe:
         else:
             page['title'] = ['Block ', b['hash'][:4], '...', b['hash'][-10:]]
 
+        body += '<div class="panel-body">'
         body += abe.short_link(page, 'b/' + block_shortlink(b['hash']))
 
         is_stake_chain = chain.has_feature('nvc_proof_of_stake')
@@ -618,7 +639,7 @@ class Abe:
 
         body += ['<h3>Transactions</h3>\n']
 
-        body += ['<table><tr><th>Transaction</th><th>Fee</th>'
+        body += ['<table class="table table-striped table-hover "><tr><th>Transaction</th><th>Fee</th>'
                  '<th>Size (kB)</th><th>From (amount)</th><th>To (amount)</th>'
                  '</tr>\n']
 
@@ -657,6 +678,25 @@ class Abe:
 
             body += ['</td></tr>\n']
         body += '</table>\n'
+        body += '</div>\n'
+
+
+    def handle_statistics(abe, page):
+        page['title'] = 'Dilmacoin Statistics'
+        page['body'] += ['<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>\n',
+                '<div class="row">\n',
+                    '<article class="col-sm-12">\n',
+                        '<div class="data-block">\n',
+                            '<section>\n',
+                                '<div id="difficultycontainer" style="min-width: 310px; height: 400px; margin: 0 auto">Loading...</div>\n',
+                                '<div id="minedcontainer" style="min-width: 310px; height: 400px; margin: 0 auto">Loading...</div>\n',
+                            '</section>\n',
+                        '</div>\n',
+                    '</article>\n',
+                    '<script src="//code.highcharts.com/highcharts.js"></script>\n',
+                    '<script src="/statistics-dilmacoin.js"></script>\n',
+                '</div>']
+
 
     def handle_block(abe, page):
         block_hash = wsgiref.util.shift_path_info(page['env'])
@@ -721,6 +761,7 @@ class Abe:
                 body += ['<td>', escape(decode_script(row['binscript'])), '</td>\n']
             body += ['</tr>\n']
 
+        body += '<div class="panel-body">'
         body += abe.short_link(page, 't/' + hexb58(tx['hash'][:14]))
         body += ['<p>Hash: ', tx['hash'], '<br />\n']
         chain = None
@@ -776,6 +817,7 @@ class Abe:
             row_to_html(txout, 'o', 'i', 'Not yet redeemed')
 
         body += ['</table>\n']
+        body += '/<div>'
 
     def handle_rawtx(abe, page):
         abe.do_raw(page, abe.do_rawtx)
@@ -797,6 +839,7 @@ class Abe:
             raise PageNotFound()
 
         body = page['body']
+        body += ['<div class="panel-body">\n']
         page['title'] = 'Address ' + escape(address)
 
         try:
@@ -804,11 +847,12 @@ class Abe:
                 address, chain=page['chain'], max_rows=abe.address_history_rows_max)
         except DataStore.MalformedAddress:
             body += ['<p>Not a valid address.</p>']
+            body += ['</div>\n']
             return
 
         if history is None:
-            body += ["<p>I'm sorry, this address has too many records"
-                     " to display.</p>"]
+            body += ["<p>I'm sorry, this address has too many records to display.</p>\n"]
+            body += ['</div>\n']
             return
 
         binaddr  = history['binaddr']
@@ -822,6 +866,7 @@ class Abe:
 
         if (not chains):
             body += ['<p>Address not seen on the network.</p>']
+            body += ['</div>\n']
             return
 
         def format_amounts(amounts, link):
@@ -882,7 +927,7 @@ class Abe:
 
         body += ['</p>\n'
                  '<h3>Transactions</h3>\n'
-                 '<table class="addrhist">\n<tr><th>Transaction</th><th>Block</th>'
+                 '<table class="table">\n<tr><th>Transaction</th><th>Block</th>'
                  '<th>Approx. Time</th><th>Amount</th><th>Balance</th>'
                  '<th>Currency</th></tr>\n']
 
@@ -913,6 +958,7 @@ class Abe:
                      '</td><td class="currency">', escape(chain.code3),
                      '</td></tr>\n']
         body += ['</table>\n']
+        body += ['</div>\n']
 
     def search_form(abe, page):
         q = (page['params'].get('q') or [''])[0]
@@ -929,8 +975,10 @@ class Abe:
         page['title'] = 'Search'
         q = (page['params'].get('q') or [''])[0]
         if q == '':
-            page['body'] = [
+            page['body'] = '<div class="panel-body">'
+            page['body'] += [
                 '<p>Please enter search terms.</p>\n', abe.search_form(page)]
+            page['body'] += '<div class="panel-body">'
             return
 
         found = []
@@ -943,8 +991,10 @@ class Abe:
 
     def show_search_results(abe, page, found):
         if not found:
+            page['body'] = '<div class="panel-body">'
             page['body'] = [
                 '<p>No results found.</p>\n', abe.search_form(page)]
+            page['body'] = '</div>'
             return
 
         if len(found) == 1:
@@ -1293,7 +1343,7 @@ class Abe:
                     page['content_type'] = 'application/json'
 
     def q(abe, page):
-        page['body'] = ['<p>Supported APIs:</p>\n<ul>\n']
+        page['body'] = ['<div class="panel-body">\n<p>Supported APIs:</p>\n<ul>\n']
         for name in dir(abe):
             if not name.startswith("q_"):
                 continue
@@ -1303,7 +1353,7 @@ class Abe:
             if val.__doc__ is not None:
                 page['body'] += [' - ', escape(val.__doc__)]
             page['body'] += ['</li>\n']
-        page['body'] += ['</ul>\n']
+        page['body'] += ['</ul>\n</div>\n']
 
     def get_max_block_height(abe, chain):
         # "getblockcount" traditionally returns max(block_height),
@@ -1966,6 +2016,7 @@ def create_conf():
             "COPYRIGHT_URL": COPYRIGHT_URL,
             "DONATIONS_BTC": DONATIONS_BTC,
             "DONATIONS_NMC": DONATIONS_NMC,
+            "DONATIONS_HUE": DONATIONS_HUE,
             "CONTENT_TYPE": DEFAULT_CONTENT_TYPE,
             "HOMEPAGE": DEFAULT_HOMEPAGE,
             },
