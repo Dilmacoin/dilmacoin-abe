@@ -453,7 +453,6 @@ class Abe:
             else:
                 body += ['<p class="error">'
                          'The requested range contains no blocks.</p>\n']
-        body += '</div>'
 
         rows = abe.store.selectall("""
             SELECT b.block_hash, b.block_height, b.block_nTime, b.block_num_tx,
@@ -549,6 +548,7 @@ class Abe:
                 '</td></tr>\n']
 
         body += ['</table>\n<p>', nav, '</p>\n']
+        body += ['</div>\n']
 
     def _show_block(abe, page, dotdotblock, chain, **kwargs):
         body = page['body']
