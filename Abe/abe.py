@@ -65,40 +65,49 @@ DEFAULT_TEMPLATE = """
 <head>
     <link rel="stylesheet" type="text/css" href="%(dotdot)s%(STATIC_PATH)sabe-dilmacoin.css" />
     <link rel="shortcut icon" href="%(dotdot)s%(STATIC_PATH)sfavicon.ico" />
+    <link rel="stylesheet" type="text/css" href="%(dotdot)s%(STATIC_PATH)scss/bootstrap.min.css" />
+    <link rel="stylesheet" type="text/css" href="%(dotdot)s%(STATIC_PATH)scss/bootstrap-theme.min.css" />
     <title>%(title)s</title>
     <meta name="description" content="Dilmacoin Blockchain by Coinexplorers.com">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-    <div class="container"> 
-        <div class="navbar navbar-default">
-            <div class="navbar-header">
-                <a class="navbar-brand" href="/">Dilmacoin Explorer</a>
-            </div>
-        <div class="navbar-collapse collapse ">
-            <ul class="nav navbar-nav">
-                <li><a href="%(dotdot)sstatistics">Statistics</a></li>
-                <li><a href="%(dotdot)s%(STATIC_PATH)sdonate">Donate</a></li>
-                <li><a href="%(dotdot)sq">API</a></li>
-            </ul>
-            <form action="/search" class="navbar-form navbar-right" role="search">
-                <div class="form-group">
-                    <input type="text" name="q" size="50" class="form-control" placeholder="Search by address, block number or hash, transaction">
-                </div>
-                <button type="submit" class="btn btn-default">Search</button>
-            </form>
+    
+    
+    <header class="navbar navbar-default navbar-static-top" role="navigation">
+    <br />
+    <div class="container">
+        <div class="navbar-header">
+        <h1><a href="%(dotdot)s%(HOMEPAGE)s">
+        <img src="%(dotdot)s%(STATIC_PATH)slogoDilma.png"  alt="Abe logo" /></a><div class="pull-right" style="line-height:35px;margin-left:20px;">Fiscal da Dilma<br />
+        <small><h4>Saiba tudo o que acontece c/ as dilmas coins. ( blockexplorer )</h4></small></div>
+        </h1>
+        <br />
         </div>
     </div>
-    <h1><a href="%(dotdot)s%(HOMEPAGE)s"><img src="%(dotdot)s%(STATIC_PATH)sdilma32.png" alt="Abe logo" /></a> %(h1)s</h1>
-    <div class="panel panel-default">
+        </header>
+        <div class="container" style="min-height:420px">
         %(body)s
-        <div class="panel-footer"> 
-            <p style="font-size: smaller">
-                <span style="font-style: italic">Powered by <a href="%(ABE_URL)s">%(APPNAME)s</a></span>%(download)s
-            <span style="float:right">DilmaCoin - <a href="%(dotdot)saddress/%(DONATIONS_HUE)s">%(DONATIONS_HUE)s</a> - Tips appreciated!</span>
-            </p>
         </div>
-    </div>
+        <footer class="navbar navbar-inverse navbar-static-bottom" style="height:110px;border-radius:0;margin-bottom:0px;color:white;padding-top:30px;text-align:center">
+        <div class="container">
+        <p><a href="%(dotdot)sq">API</a> (machine-readable pages)</p>
+        <p style="font-size: smaller">
+            <span style="font-style: italic">
+                Powered by <a href="%(ABE_URL)s">%(APPNAME)s</a>
+            </span>
+            %(download)s
+            Tips appreciated!
+            <a href="%(dotdot)saddress/%(DONATIONS_BTC)s">BTC</a>
+            <a href="%(dotdot)saddress/%(DONATIONS_NMC)s">NMC</a>
+        </p>
+        </div>
+        </footer>
+        <script src="%(dotdot)s%(STATIC_PATH)s/js/jquery-1.11.0.min.js" type="text/javascript" ></script>
+        <script src="%(dotdot)s%(STATIC_PATH)s/js/bootstrap.min.js" type="text/javascript"></script>
+       
+
+
 </body>
 </html>
 """
@@ -963,13 +972,13 @@ class Abe:
     def search_form(abe, page):
         q = (page['params'].get('q') or [''])[0]
         return [
-            '<p>Search by address, block number or hash, transaction or'
-            ' public key hash, or chain name:</p>\n'
+            '<div class="row"><div class="col-xs-2"></div><div class="col-xs-8" style="text-align:center;"><p>Busca por endereço, número de bloco, hash, número da transação,'
+            ' hash da chave pública, ou o nome de cadeia:</p>\n'
             '<form action="', page['dotdot'], 'search"><p>\n'
-            '<input name="q" size="64" value="', escape(q), '" />'
-            '<button type="submit">Search</button>\n'
-            '<br />Address or hash search requires at least the first ',
-            HASH_PREFIX_MIN, ' characters.</p></form>\n']
+            '<div class="col-lg-12"><div class="input-group"> <input name="q" size="64" class="form-control" value="', escape(q), '" /><span class="input-group-btn"> '
+            '<button class="btn btn-default" type="submit">Pesquisar</button></span></div></div>\n'
+            '<br /><br /><span style="font-size:12px">Busca por endereço ou hash requer no mínimo ',
+            HASH_PREFIX_MIN, ' caracteres.</span></p></form></div></div>\n']
 
     def handle_search(abe, page):
         page['title'] = 'Search'
@@ -993,7 +1002,7 @@ class Abe:
         if not found:
             page['body'] = '<div class="panel-body">'
             page['body'] = [
-                '<p>No results found.</p>\n', abe.search_form(page)]
+                '<p>Nenhum resultado encontrado.</p>\n', abe.search_form(page)]
             page['body'] = '</div>'
             return
 
@@ -1007,7 +1016,7 @@ class Abe:
             raise Redirect()
 
         body = page['body']
-        body += ['<h3>Search Results</h3>\n<ul>\n']
+        body += ['<h3>Resultados</h3>\n<ul>\n']
         for result in found:
             body += [
                 '<li><a href="', page['dotdot'], escape(result['uri']), '">',
