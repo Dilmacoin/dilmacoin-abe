@@ -80,7 +80,7 @@ DEFAULT_TEMPLATE = """
         <div class="navbar-header">
         <h1><a href="%(dotdot)s%(HOMEPAGE)s">
         <img src="%(dotdot)s%(STATIC_PATH)slogoDilma.png"  alt="Abe logo" /></a><div class="pull-right" style="line-height:35px;margin-left:20px;">Fiscal da Dilma<br />
-        <small><h4>Saiba tudo o que acontece com as dilmas coins. ( blockexplorer )</h4></small></div>
+        <small><h4>Block Explorer - Saiba tudo o que acontece com as dilmacoins</h4></small></div>
         </h1>
         <br />
         </div>
