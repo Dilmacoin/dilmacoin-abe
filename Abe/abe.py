@@ -971,12 +971,12 @@ class Abe:
     def search_form(abe, page):
         q = (page['params'].get('q') or [''])[0]
         return [
-            '<div class="row"><div class="col-xs-2"></div><div class="col-xs-8" style="text-align:center;"><p>Busca por endereço, número de bloco, hash, número da transação,'
-            ' hash da chave pública ou nome de cadeia:</p>\n'
+            '<div class="row"><div class="col-xs-2"></div><div class="col-xs-8" style="text-align:center;"><p>Busca por endere&ccedil;o, n&uacute;mero de bloco, hash, n&uacute;mero da transa&ccedil;&atilde;o,'
+            ' hash da chave p&uacute;blica, ou o nome de cadeia:</p>\n'
             '<form action="', page['dotdot'], 'search"><p>\n'
             '<div class="col-lg-12"><div class="input-group"> <input name="q" size="64" class="form-control" value="', escape(q), '" /><span class="input-group-btn"> '
             '<button class="btn btn-default" type="submit">Pesquisar</button></span></div></div>\n'
-            '<br /><br /><span style="font-size:12px">Busca por endereço ou hash requer no mínimo ',
+            '<br /><br /><span style="font-size:12px">Busca por endere&ccedil;o ou hash requer no m&iacute;nimo ',
             HASH_PREFIX_MIN, ' caracteres.</span></p></form></div></div>\n']
 
     def handle_search(abe, page):
