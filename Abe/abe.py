@@ -63,10 +63,10 @@ DEFAULT_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="stylesheet" type="text/css" href="%(dotdot)s%(STATIC_PATH)sabe-dilmacoin.css" />
     <link rel="shortcut icon" href="%(dotdot)s%(STATIC_PATH)sfavicon.ico" />
     <link rel="stylesheet" type="text/css" href="%(dotdot)s%(STATIC_PATH)scss/bootstrap.min.css" />
     <link rel="stylesheet" type="text/css" href="%(dotdot)s%(STATIC_PATH)scss/bootstrap-theme.min.css" />
+    <link rel="stylesheet" type="text/css" href="%(dotdot)s%(STATIC_PATH)sabe-dilmacoin.css" />
     <title>%(title)s</title>
     <meta name="description" content="Dilmacoin Blockchain by Coinexplorers.com">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
