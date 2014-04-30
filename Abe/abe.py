@@ -102,7 +102,6 @@ DEFAULT_TEMPLATE = """
         </p>
         </div>
         </footer>
-        <script src="%(dotdot)s%(STATIC_PATH)s/js/jquery-1.11.0.min.js" type="text/javascript" ></script>
         <script src="%(dotdot)s%(STATIC_PATH)s/js/bootstrap.min.js" type="text/javascript"></script>
        
 
