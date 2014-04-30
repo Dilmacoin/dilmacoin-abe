@@ -80,7 +80,7 @@ DEFAULT_TEMPLATE = """
         <div class="navbar-header">
         <h1><a href="%(dotdot)s%(HOMEPAGE)s">
         <img src="%(dotdot)s%(STATIC_PATH)slogoDilma.png"  alt="Abe logo" /></a><div class="pull-right" style="line-height:35px;margin-left:20px;">Fiscal da Dilma<br />
-        <small><h4>Saiba tudo o que acontece c/ as dilmas coins. ( blockexplorer )</h4></small></div>
+        <small><h4>Saiba tudo o que acontece com as dilmas coins. ( blockexplorer )</h4></small></div>
         </h1>
         <br />
         </div>
@@ -972,7 +972,7 @@ class Abe:
         q = (page['params'].get('q') or [''])[0]
         return [
             '<div class="row"><div class="col-xs-2"></div><div class="col-xs-8" style="text-align:center;"><p>Busca por endereço, número de bloco, hash, número da transação,'
-            ' hash da chave pública, ou o nome de cadeia:</p>\n'
+            ' hash da chave pública ou nome de cadeia:</p>\n'
             '<form action="', page['dotdot'], 'search"><p>\n'
             '<div class="col-lg-12"><div class="input-group"> <input name="q" size="64" class="form-control" value="', escape(q), '" /><span class="input-group-btn"> '
             '<button class="btn btn-default" type="submit">Pesquisar</button></span></div></div>\n'
