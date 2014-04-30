@@ -98,7 +98,7 @@ DEFAULT_TEMPLATE = """
             </span>
             %(download)s
             Tips appreciated!
-            <a href="%(dotdot)saddress/%(DONATIONS_HUE)s">BTC</a>
+            <a href="%(dotdot)saddress/%(DONATIONS_HUE)s">HUE</a>
         </p>
         </div>
         </footer>
