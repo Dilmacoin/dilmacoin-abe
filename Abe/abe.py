@@ -691,7 +691,7 @@ class Abe:
 
     def handle_statistics(abe, page):
         page['title'] = 'Dilmacoin Statistics'
-        page['body'] += ['<div class="row"><div class="col-xs-2"></div><div class="col-xs-8" style="text-align:center;padding-bottom: 30px;"><h3>Veja como est&aacute; a arrecada&ccedil;&atilde;o das Dilmas</h3></div>\n',
+        page['body'] += ['<div class="row" style="padding-bottom: 30px;"><div class="col-xs-2"></div><div class="col-xs-8" style="text-align:center;padding-bottom: 30px;"><h3>Veja como est&aacute; a arrecada&ccedil;&atilde;o das Dilmas</h3></div>\n',
                     '<article class="col-sm-12">\n',
                         '<div class="data-block">\n',
                             '<section>\n',

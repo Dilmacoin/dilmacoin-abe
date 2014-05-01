@@ -106,7 +106,7 @@ $().ready(function() {
                 	spacingRight: 20
             	},
             	title: {
-                	text: 'Network difficulty'
+                	text: 'Dificuldade de mineração'
             	},
             	subtitle: {
                 	text: document.ontouchstart === undefined ?
@@ -122,7 +122,7 @@ $().ready(function() {
             	},
             	yAxis: {
                 	title: {
-                    	text: 'Difficulty'
+                    	text: 'Dificuldade'
                 	},
                 	min: 0
             	},
@@ -156,7 +156,7 @@ $().ready(function() {
             	},
             	series: [{
             		type: 'area',
-                	name: 'Difficulty',
+                	name: 'Dificuldade',
                 	data: difficulties
             	}]
             });
@@ -172,7 +172,7 @@ $().ready(function() {
         var premined = 16000000; 
         $('#minedcontainer').highcharts({
             title: {
-                text: 'Mined Dilmacoins'
+                text: 'Dilmacoins mineradas'
             },
             tooltip: {
                 pointFormat: '{series.name}: <b>{point.percentage:.2f}%</b>'
@@ -193,11 +193,11 @@ $().ready(function() {
             },
             series: [{
                 type: 'pie',
-                name: 'Mining progress',
+                name: 'Progresso da mineração',
                 data: [
 		   
-                    ['Mined', mined],
-                    ['Unmined', unmined]
+                    ['Mineradas', mined],
+                    ['Não mineradas', unmined]
                 ]
             }]
         });
