@@ -701,7 +701,7 @@ class Abe:
                         '</div>\n',
                     '</article>\n',
                     '<script src="//code.highcharts.com/highcharts.js"></script>\n',
-                    '<script src="/statistics-dilmacoin.js"></script>\n',
+                    '<script src="%(dotdot)s%(STATIC_PATH)sstatistics-dilmacoin.js"></script>\n',
                 '</div>']
 
 
