@@ -71,6 +71,7 @@ DEFAULT_TEMPLATE = """
     <meta name="description" content="Dilmacoin Blockchain by Coinexplorers.com">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script src="%(dotdot)s%(STATIC_PATH)sstatistics-dilmacoin.js"></script>
 </head>
 <body>
     
@@ -701,7 +702,6 @@ class Abe:
                         '</div>\n',
                     '</article>\n',
                     '<script src="//code.highcharts.com/highcharts.js"></script>\n',
-                    '<script src="%(dotdot)s%(STATIC_PATH)sstatistics-dilmacoin.js"></script>\n',
                 '</div>']
 
 
