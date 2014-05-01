@@ -70,6 +70,7 @@ DEFAULT_TEMPLATE = """
     <title>%(title)s</title>
     <meta name="description" content="Dilmacoin Blockchain by Coinexplorers.com">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
 </head>
 <body>
     
@@ -690,8 +691,7 @@ class Abe:
 
     def handle_statistics(abe, page):
         page['title'] = 'Dilmacoin Statistics'
-        page['body'] += ['<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>\n',
-                '<div class="row">\n',
+        page['body'] += ['<div class="row"><div class="col-xs-2"></div><div class="col-xs-8" style="text-align:center;padding-bottom: 30px;"><h3>Veja como est&aacute; a arrecada&ccedil;&atilde;o das Dilmas</h3></div>\n',
                     '<article class="col-sm-12">\n',
                         '<div class="data-block">\n',
                             '<section>\n',
@@ -970,6 +970,7 @@ class Abe:
     def search_form(abe, page):
         q = (page['params'].get('q') or [''])[0]
         return [
+            '<div class="row"><div class="col-xs-2"></div><div class="col-xs-8" style="text-align:center;padding-bottom: 30px;"><h3>Para ver o Dilmam&ocirc;metro <a href="/statistics">clique aqui</a></h3></div></div>'
             '<div class="row"><div class="col-xs-2"></div><div class="col-xs-8" style="text-align:center;"><p>Busca por endere&ccedil;o, n&uacute;mero de bloco, hash, n&uacute;mero da transa&ccedil;&atilde;o,'
             ' hash da chave p&uacute;blica, ou o nome de cadeia:</p>\n'
             '<form action="', page['dotdot'], 'search"><p>\n'
