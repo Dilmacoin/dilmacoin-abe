@@ -383,7 +383,7 @@ def create_x_cc_block_id(store):
 
 def reverse_binary_hashes(store):
     if store.config['binary_type'] != 'hex':
-        raise Error(
+        raise Exception(
             'To support search by hash prefix, we have to reverse all values'
             ' in block.block_hash, block.block_hashMerkleRoot, tx.tx_hash,'
             ' orphan_block.block_hashPrev, and unlinked_txin.txout_tx_hash.'
@@ -809,6 +809,11 @@ def adjust_block_total_satoshis(store):
     if count % 1000 != 0:
         store.log.info("Adjusted %d of %d blocks.", count, len(block_ids))
 
+def config_concat_style(store):
+    store._sql.configure_concat_style()
+    store.config['sql.concat_style'] = store._sql.config['concat_style']
+    store.save_configvar("sql.concat_style")
+
 def config_limit_style(store):
     # XXX This won't work anymore.
     store.configure_limit_style()
@@ -1011,6 +1016,13 @@ def create_multisig_pubkey(store):
 def create_x_multisig_pubkey_multisig(store):
     store.ddl("CREATE INDEX x_multisig_pubkey_pubkey ON multisig_pubkey (pubkey_id)")
 
+def update_chain_policy(store):
+    store.sql("""
+        UPDATE chain
+           SET chain_policy = 'Sha256Chain'
+         WHERE chain_policy = chain_name
+           AND chain_name IN ('Weeds', 'BeerTokens', 'SolidCoin', 'ScTestnet', 'Worldcoin', 'Anoncoin')""")
+
 def populate_multisig_pubkey(store):
     store.init_chains()
     store.log.info("Finding new address types.")
@@ -1140,9 +1152,11 @@ upgrades = [
     ('Abe37.2', populate_chain_script_addr_vers), # Fast
     ('Abe37.3', create_multisig_pubkey), # Fast
     ('Abe37.4', create_x_multisig_pubkey_multisig), # Fast
-    ('Abe37.5', populate_multisig_pubkey), # Minutes-hours
+    ('Abe37.5', update_chain_policy),    # Fast
+    ('Abe37.6', populate_multisig_pubkey), # Minutes-hours
     ('Abe38',   abstract_sql),           # Fast
-    ('Abe39', None)
+    ('Abe39',   config_concat_style),    # Fast
+    ('Abe40', None)
 ]
 
 def upgrade_schema(store):

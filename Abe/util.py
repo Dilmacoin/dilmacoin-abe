@@ -24,7 +24,7 @@ import base58
 import Crypto.Hash.SHA256 as SHA256
 
 try:
-    import Crypto.Hash.RIPEMD160 as RIPEMD160
+    import Crypto.Hash.RIPEMD as RIPEMD160
 except Exception:
     import ripemd_via_hashlib as RIPEMD160
 
@@ -53,14 +53,28 @@ def short_hex(bytes):
 NULL_HASH = "\0" * 32
 GENESIS_HASH_PREV = NULL_HASH
 
+def sha256(s):
+    return SHA256.new(s).digest()
+
 def double_sha256(s):
-    return SHA256.new(SHA256.new(s).digest()).digest()
+    return sha256(sha256(s))
+
+def sha3_256(s):
+    import hashlib
+    import sys
+    if sys.version_info < (3, 4):
+        import sha3
+    return hashlib.sha3_256(s).digest()
 
 def pubkey_to_hash(pubkey):
     return RIPEMD160.new(SHA256.new(pubkey).digest()).digest()
 
 def calculate_target(nBits):
-    return (nBits & 0xffffff) << (8 * (((nBits >> 24) & 0xff) - 3))
+    # cf. CBigNum::SetCompact in bignum.h
+    shift = 8 * (((nBits >> 24) & 0xff) - 3)
+    bits = nBits & 0x7fffff
+    sign = -1 if (nBits & 0x800000) else 1
+    return sign * (bits << shift if shift >= 0 else bits >> -shift)
 
 def target_to_difficulty(target):
     return ((1 << 224) - 1) * 1000 / (target + 1) / 1000.0
@@ -177,3 +191,9 @@ class CmdLine(object):
         store = DataStore.new(args)
 
         return store, argv
+
+# Abstract hex-binary conversions for eventual porting to Python 3.
+def hex2b(s):
+    return s.decode('hex')
+def b2hex(b):
+    return b.encode('hex')

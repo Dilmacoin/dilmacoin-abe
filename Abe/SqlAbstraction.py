@@ -35,6 +35,8 @@ class SqlAbstraction(object):
         sql.connect_args = args.connect_args
         sql.prefix = args.prefix
         sql.config = args.config
+        sql.binary_type = args.binary_type
+        sql.int_type = args.int_type
 
         sql.log    = logging.getLogger(__name__)
         sql.sqllog = logging.getLogger(__name__ + ".sql")
@@ -189,6 +191,12 @@ class SqlAbstraction(object):
             pass
         elif val == 'emulated':
             selectall = sql.emulate_limit(selectall)
+
+        val = sql.config.get('concat_style')
+        if val in (None, 'ansi'):
+            pass
+        elif val == 'mysql':
+            transform_stmt = sql._transform_concat(transform_stmt)
 
         transform_stmt = sql._append_table_epilogue(transform_stmt)
 
@@ -413,6 +421,15 @@ class SqlAbstraction(object):
             return selectall(stmt, params)
         return ret
 
+    def _transform_concat(sql, fn):
+        concat_re = re.compile(r"((?:(?:'[^']*'|\?)\s*\|\|\s*)+(?:'[^']*'|\?))", re.DOTALL)
+        def repl(match):
+            clist = re.sub(r"\s*\|\|\s*", ", ", match.group(1))
+            return 'CONCAT(' + clist + ')'
+        def ret(stmt):
+            return fn(concat_re.sub(repl, stmt))
+        return ret
+
     def _append_table_epilogue(sql, fn):
         epilogue = sql.config.get('create_table_epilogue', "")
         if epilogue == "":
@@ -620,11 +637,14 @@ class SqlAbstraction(object):
         sql.configure_int_type()
         sql.configure_sequence_type()
         sql.configure_limit_style()
+        sql.configure_concat_style()
 
         return sql.config
 
     def configure_binary_type(sql):
-        defaults = ['binary', 'bytearray', 'buffer', 'hex', 'pg-bytea']
+        defaults = (['binary', 'bytearray', 'buffer', 'hex', 'pg-bytea']
+            if sql.binary_type is None else
+            [ sql.binary_type ])
         tests = (defaults
                  if sql.config.get('binary_type') is None else
                  [ sql.config['binary_type'] ])
@@ -642,7 +662,10 @@ class SqlAbstraction(object):
             "Binary type " + tests[0] + " fails test")
 
     def configure_int_type(sql):
-        defaults = ['int', 'decimal', 'str']
+        defaults = (['int', 'decimal', 'str']
+            if sql.int_type is None else
+            [ sql.int_type ])
+
         tests = (defaults if sql.config.get('int_type') is None else
                  [ sql.config['int_type'] ])
 
@@ -796,7 +819,7 @@ class SqlAbstraction(object):
         for val in ['CLOB', 'LONGTEXT', 'TEXT', 'LONG']:
             try:
                 sql.ddl("CREATE TABLE %stest_1 (a %s)" % (sql.prefix, val))
-                sql.sql("INSERT INTO %stest_1 (a) VALUES (?)", (sql.prefix, sql.binin(long_str)))
+                sql.sql("INSERT INTO %stest_1 (a) VALUES (?)" % sql.prefix, (sql.binin(long_str),))
                 out = sql.selectrow("SELECT a FROM %stest_1" % sql.prefix)[0]
                 if sql.binout(out) == long_str:
                     sql.config['clob_type'] = val
@@ -853,7 +876,7 @@ class SqlAbstraction(object):
             sql.ddl("""
                 CREATE TABLE %stest_1 (
                     test_id NUMERIC(2) NOT NULL PRIMARY KEY,
-                    i1 NUMERIC(30), i2 NUMERIC(20))""" % sql.prefix)
+                    i1 NUMERIC(28), i2 NUMERIC(28), i3 NUMERIC(28))""" % sql.prefix)
             # XXX No longer needed?
             sql.ddl("""
                 CREATE VIEW %stest_v1 AS
@@ -864,9 +887,10 @@ class SqlAbstraction(object):
                   FROM %stest_1""" % (sql.prefix, sql.prefix))
             v1 = 2099999999999999
             v2 = 1234567890
-            sql.sql("INSERT INTO %stest_1 (test_id, i1, i2)"
-                    " VALUES (?, ?, ?)" % sql.prefix,
-                    (1, sql.intin(v1), v2))
+            v3 = 12345678901234567890L
+            sql.sql("INSERT INTO %stest_1 (test_id, i1, i2, i3)"
+                    " VALUES (?, ?, ?, ?)" % sql.prefix,
+                    (1, sql.intin(v1), v2, sql.intin(v3)))
             sql.commit()
             prod, o1 = sql.selectrow("SELECT i1_approx * i2, i1 FROM %stest_v1" % sql.prefix)
             prod = int(prod)
@@ -945,3 +969,28 @@ class SqlAbstraction(object):
             return False
         finally:
             sql.drop_table_if_exists("%stest_1" % sql.prefix)
+
+    def configure_concat_style(sql):
+        for val in ['ansi', 'mysql']:
+            sql.config['concat_style'] = val
+            sql._set_flavour()
+            if sql._test_concat_style():
+                sql.log.info("concat_style=%s", val)
+                return
+        raise Exception("Can not find suitable concatenation style.")
+
+    def _test_concat_style(sql):
+        try:
+            rows = sql.selectall("""
+                SELECT 'foo' || ? || 'baz' AS String1,
+                    ? || 'foo' || ? AS String2
+                """, ('bar', 'baz', 'bar'));
+            sql.log.info(str(rows))
+            if rows[0][0] == 'foobarbaz' and rows[0][1] == 'bazfoobar':
+                return True
+        except Exception as e:
+            pass
+
+        sql.rollback()
+        return False
+

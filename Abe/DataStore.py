@@ -23,6 +23,7 @@
 
 import os
 import re
+import time
 import errno
 import logging
 
@@ -37,7 +38,7 @@ import util
 import base58
 
 SCHEMA_TYPE = "Abe"
-SCHEMA_VERSION = SCHEMA_TYPE + "39"
+SCHEMA_VERSION = SCHEMA_TYPE + "40"
 
 CONFIG_DEFAULTS = {
     "dbtype":             None,
@@ -49,36 +50,43 @@ CONFIG_DEFAULTS = {
     "commit_bytes":       None,
     "log_sql":            None,
     "log_rpc":            None,
+    "default_chain":      "Bitcoin",
     "datadir":            None,
     "ignore_bit8_chains": None,
     "use_firstbits":      False,
     "keep_scriptsig":     True,
     "import_tx":          [],
     "default_loader":     "default",
+    "rpc_load_mempool":   False,
 }
 
 WORK_BITS = 304  # XXX more than necessary.
 
 CHAIN_CONFIG = [
-    #{"chain":"Bitcoin"},
-    #{"chain":"Testnet"},
-    #{"chain":"Namecoin"},
-    #{"chain":"Weeds", "network":"Weedsnet",
-    # "code3":"WDS", "address_version":"\xf3", "magic":"\xf8\xbf\xb5\xda"},
-    #{"chain":"BeerTokens",
-    # "code3":"BER", "address_version":"\xf2", "magic":"\xf7\xbf\xb5\xdb"},
-    #{"chain":"SolidCoin",
-    # "code3":"SCN", "address_version":"\x7d", "magic":"\xde\xad\xba\xbe"},
-    #{"chain":"ScTestnet",
-    # "code3":"SC0", "address_version":"\x6f", "magic":"\xca\xfe\xba\xbe"},
-    #{"chain":"Worldcoin",
-    # "code3":"WDC", "address_version":"\x49", "magic":"\xfb\xc0\xb6\xdb"},
-    #{"chain":"NovaCoin"},
-    #{"chain":"CryptoCash"},
-    #{"chain":"Anoncoin","code3":"ANC", "address_version":"\u0017", "magic":"\xFA\xCA\xBA\xDA" },
-    #{"chain":"Hirocoin"},
     {"chain":"Dilmacoin"},
-    #{"chain":"Bitleu"},
+#    {"chain":"Bitcoin"},
+#    {"chain":"Testnet"},
+#    {"chain":"Namecoin"},
+#    {"chain":"Weeds", "policy":"Sha256Chain",
+#     "code3":"WDS", "address_version":"\xf3", "magic":"\xf8\xbf\xb5\xda"},
+#    {"chain":"BeerTokens", "policy":"Sha256Chain",
+#     "code3":"BER", "address_version":"\xf2", "magic":"\xf7\xbf\xb5\xdb"},
+#    {"chain":"SolidCoin", "policy":"Sha256Chain",
+#     "code3":"SCN", "address_version":"\x7d", "magic":"\xde\xad\xba\xbe"},
+#    {"chain":"ScTestnet", "policy":"Sha256Chain",
+#     "code3":"SC0", "address_version":"\x6f", "magic":"\xca\xfe\xba\xbe"},
+#    {"chain":"Worldcoin", "policy":"Sha256Chain",
+#     "code3":"WDC", "address_version":"\x49", "magic":"\xfb\xc0\xb6\xdb"},
+#    {"chain":"NovaCoin"},
+#    {"chain":"CryptoCash"},
+#    {"chain":"Anoncoin", "policy":"Sha256Chain",
+#     "code3":"ANC", "address_version":"\x17", "magic":"\xFA\xCA\xBA\xDA" },
+#    {"chain":"Hirocoin"},
+#    {"chain":"Bitleu"},
+#    {"chain":"Maxcoin"},
+#    {"chain":"Dash"},
+#    {"chain":"BlackCoin"},
+#    {"chain":"Unbreakablecoin"},
     #{"chain":"",
     # "code3":"", "address_version":"\x", "magic":""},
     ]
@@ -220,6 +228,10 @@ class DataStore(object):
             store.maybe_import_binary_tx(chain_name, str(hex_tx).decode('hex'))
 
         store.default_loader = args.default_loader
+
+        store.rpc_load_mempool = args.rpc_load_mempool
+
+        store.default_chain = args.default_chain;
 
         store.commit()
 
@@ -496,7 +508,7 @@ class DataStore(object):
 
     def get_default_chain(store):
         store.log.debug("Falling back to default (Bitcoin) policy.")
-        return Chain.create(None)
+        return Chain.create(store.default_chain)
 
     def get_ddl(store, key):
         return store._ddl[key]
@@ -670,7 +682,7 @@ store._ddl['configvar'],
 """CREATE TABLE chain (
     chain_id    NUMERIC(10) NOT NULL PRIMARY KEY,
     chain_name  VARCHAR(100) UNIQUE NOT NULL,
-    chain_code3 VARCHAR(4)  NULL,
+    chain_code3 VARCHAR(5)  NULL,
     chain_address_version VARBINARY(100) NOT NULL,
     chain_script_addr_vers VARBINARY(100) NULL,
     chain_magic BINARY(4)     NULL,
@@ -830,8 +842,12 @@ store._ddl['txout_approx'],
         for conf in CHAIN_CONFIG:
             conf = conf.copy()
             conf["name"] = conf.pop("chain")
+            if 'policy' in conf:
+                policy = conf.pop('policy')
+            else:
+                policy = conf['name']
 
-            chain = Chain.create(policy=conf["name"], **conf)
+            chain = Chain.create(policy, **conf)
             store.insert_chain(chain)
 
         store.sql("""
@@ -871,7 +887,7 @@ store._ddl['txout_approx'],
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                   (chain.id, store.binin(chain.magic), chain.name,
                    chain.code3, store.binin(chain.address_version), store.binin(chain.script_addr_vers),
-                   chain.name, chain.decimals))
+                   chain.policy, chain.decimals))
 
     def get_lock(store):
         if store.version_below('Abe26'):
@@ -1230,7 +1246,9 @@ store._ddl['txout_approx'],
               JOIN txin ON (txin.tx_id = bt.tx_id)
               JOIN txout ON (txin.txout_id = txout.txout_id)
               JOIN block_tx obt ON (txout.tx_id = obt.tx_id)
+              JOIN block ob ON (obt.block_id = ob.block_id)
              WHERE bt.block_id = ?
+               AND ob.block_chain_work IS NOT NULL
              GROUP BY txin.txin_id""", (block_id,)):
             (txin_id, oblock_id) = row
             if store.is_descended_from(block_id, int(oblock_id)):
@@ -1738,7 +1756,7 @@ store._ddl['txout_approx'],
 
         return b
 
-    def tx_find_id_and_value(store, tx, is_coinbase):
+    def tx_find_id_and_value(store, tx, is_coinbase, check_only=False):
         row = store.selectrow("""
             SELECT tx.tx_id, SUM(txout.txout_value), SUM(
                        CASE WHEN txout.pubkey_id > 0 THEN txout.txout_value
@@ -1749,6 +1767,11 @@ store._ddl['txout_approx'],
              GROUP BY tx.tx_id""",
                               (store.hashin(tx['hash']),))
         if row:
+            if check_only:
+                 # Don't update tx, saves a statement when all we care is
+                 # whenever tx_id is in store
+                 return row[0]
+
             tx_id, value_out, undestroyed = row
             value_out = 0 if value_out is None else int(value_out)
             undestroyed = 0 if undestroyed is None else int(undestroyed)
@@ -2529,7 +2552,7 @@ store._ddl['txout_approx'],
         """
         chain_id = dircfg['chain_id']
         if chain_id is None:
-            store.log.debug("no chain_id")
+            store.log.error("no chain_id")
             return False
         chain = store.chains_by.id[chain_id]
 
@@ -2542,7 +2565,7 @@ store._ddl['txout_approx'],
                          for line in open(conffile)
                          if line != "" and line[0] not in "#\r\n"])
         except Exception, e:
-            store.log.debug("failed to load %s: %s", conffile, e)
+            store.log.error("failed to load %s: %s", conffile, e)
             return False
 
         rpcuser     = conf.get("rpcuser", "")
@@ -2565,15 +2588,16 @@ store._ddl['txout_approx'],
             try:
                 return rpc("getblockhash", height)
             except util.JsonrpcException, e:
-                if e.code == -1:  # Block number out of range.
+                if e.code in (-1, -5, -8):
+                    # Block number out of range...
+                    #  -1 is legacy code (pre-10.0), generic error
+                    #  -8 (RPC_INVALID_PARAMETER) first seen in bitcoind 10.x
+                    #  -5 (RPC_NOT_FOUND): Been suggested in #bitcoin-dev as more appropriate
                     return None
                 raise
 
-        (max_height,) = store.selectrow("""
-            SELECT MAX(block_height)
-              FROM chain_candidate
-             WHERE chain_id = ?""", (chain.id,))
-        height = 0 if max_height is None else int(max_height) + 1
+        # Returns -1 on error, so we'll get 0 on empty chain
+        height = store.get_block_number(chain.id) + 1
 
         def get_tx(rpc_tx_hash):
             try:
@@ -2583,7 +2607,6 @@ store._ddl['txout_approx'],
                 if e.code != -5:  # -5: transaction not in index.
                     raise
                 if height != 0:
-                    store.log.debug("RPC service lacks full txindex")
                     return None
 
                 # The genesis transaction is unavailable.  This is
@@ -2591,7 +2614,7 @@ store._ddl['txout_approx'],
                 import genesis_tx
                 rpc_tx_hex = genesis_tx.get(rpc_tx_hash)
                 if rpc_tx_hex is None:
-                    store.log.debug("genesis transaction unavailable via RPC;"
+                    store.log.error("genesis transaction unavailable via RPC;"
                                     " see import-tx in abe.conf")
                     return None
 
@@ -2607,20 +2630,9 @@ store._ddl['txout_approx'],
             tx['hash'] = tx_hash
             return tx
 
-        try:
+        def first_new_block(height, next_hash):
+            """Find the first new block."""
 
-            # Get block hash at height, and at the same time, test
-            # bitcoind connectivity.
-            try:
-                next_hash = get_blockhash(height)
-            except util.JsonrpcException, e:
-                raise
-            except Exception, e:
-                # Connectivity failure.
-                store.log.debug("RPC failed: %s", e)
-                return False
-
-            # Find the first new block.
             while height > 0:
                 hash = get_blockhash(height - 1)
 
@@ -2637,8 +2649,65 @@ store._ddl['txout_approx'],
                 next_hash = hash
                 height -= 1
 
+            return (height, next_hash)
+
+        def catch_up_mempool(height):
+            # imported tx cache, so we can avoid querying DB on each pass
+            imported_tx = set()
+            # Next height check time
+            height_chk = time.time() + 1
+
+            while store.rpc_load_mempool:
+                # Import the memory pool.
+                for rpc_tx_hash in rpc("getrawmempool"):
+                    if rpc_tx_hash in imported_tx: continue
+
+                    # Break loop if new block found
+                    if height_chk < time.time():
+                        rpc_hash = get_blockhash(height)
+                        if rpc_hash:
+                            return rpc_hash
+                        height_chk = time.time() + 1
+
+                    tx = get_tx(rpc_tx_hash)
+                    if tx is None:
+                        # NB: On new blocks, older mempool tx are often missing
+                        # This happens some other times too, just get over with
+                        store.log.info("tx %s gone from mempool" % rpc_tx_hash)
+                        continue
+
+                    # XXX Race condition in low isolation levels.
+                    tx_id = store.tx_find_id_and_value(tx, False, check_only=True)
+                    if tx_id is None:
+                        tx_id = store.import_tx(tx, False, chain)
+                        store.log.info("mempool tx %d", tx_id)
+                        store.imported_bytes(tx['size'])
+                    imported_tx.add(rpc_tx_hash)
+
+                store.log.info("mempool load completed, starting over...")
+                time.sleep(3)
+            return None
+
+        try:
+
+            # Get block hash at height, and at the same time, test
+            # bitcoind connectivity.
+            try:
+                next_hash = get_blockhash(height)
+            except util.JsonrpcException, e:
+                raise
+            except Exception, e:
+                # Connectivity failure.
+                store.log.error("RPC failed: %s", e)
+                return False
+
+            # Get the first new block (looking backward until hash match)
+            height, next_hash = first_new_block(height, next_hash)
+
             # Import new blocks.
             rpc_hash = next_hash or get_blockhash(height)
+            if rpc_hash is None:
+                rpc_hash = catch_up_mempool(height)
             while rpc_hash is not None:
                 hash = rpc_hash.decode('hex')[::-1]
 
@@ -2677,6 +2746,7 @@ store._ddl['txout_approx'],
                         if tx is None:
                             tx = get_tx(rpc_tx_hash)
                             if tx is None:
+                                store.log.error("RPC service lacks full txindex")
                                 return False
 
                         block['transactions'].append(tx)
@@ -2686,26 +2756,20 @@ store._ddl['txout_approx'],
                     rpc_hash = rpc_block.get('nextblockhash')
 
                 height += 1
-
-            # Import the memory pool.
-            for rpc_tx_hash in rpc("getrawmempool"):
-                tx = get_tx(rpc_tx_hash)
-                if tx is None:
-                    return False
-
-                # XXX Race condition in low isolation levels.
-                tx_id = store.tx_find_id_and_value(tx, False)
-                if tx_id is None:
-                    tx_id = store.import_tx(tx, False, chain)
-                    store.log.info("mempool tx %d", tx_id)
-                    store.imported_bytes(tx['size'])
+                if rpc_hash is None:
+                    rpc_hash = catch_up_mempool(height)
+                    # Also look backwards in case we end up on an orphan block.
+                    # NB: Call only when rpc_hash is not None, otherwise
+                    #     we'll override catch_up_mempool's behavior.
+                    if rpc_hash:
+                        height, rpc_hash = first_new_block(height, rpc_hash)
 
         except util.JsonrpcMethodNotFound, e:
-            store.log.debug("bitcoind %s not supported", e.method)
+            store.log.error("bitcoind %s not supported", e.method)
             return False
 
         except InvalidBlock, e:
-            store.log.debug("RPC data not understood: %s", e)
+            store.log.error("RPC data not understood: %s", e)
             return False
 
         return True
@@ -2958,12 +3022,14 @@ store._ddl['txout_approx'],
                 dircfg['blkfile_offset'] = offset
 
     def get_block_number(store, chain_id):
-        (height,) = store.selectrow("""
-            SELECT MAX(block_height)
+        row = store.selectrow("""
+            SELECT block_height
               FROM chain_candidate
              WHERE chain_id = ?
-               AND in_longest = 1""", (chain_id,))
-        return -1 if height is None else int(height)
+               AND in_longest = 1
+             ORDER BY block_height DESC
+             LIMIT 1""", (chain_id,))
+        return int(row[0]) if row else -1
 
     def get_target(store, chain_id):
         rows = store.selectall("""

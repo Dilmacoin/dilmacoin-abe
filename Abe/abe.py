@@ -237,8 +237,8 @@ class Abe:
     def __call__(abe, env, start_response):
         import urlparse
 
-        status = '200 OK'
         page = {
+            "status": '200 OK',
             "title": [escape(ABE_APPNAME), " ", ABE_VERSION],
             "body": [],
             "env": env,
@@ -275,7 +275,7 @@ class Abe:
 
             handler(page)
         except PageNotFound:
-            status = '404 Not Found'
+            page['status'] = '404 Not Found'
             page['body'] = ['<div class="panel-body"><p class="error">Sorry, ', env['SCRIPT_NAME'],
                             env['PATH_INFO'],
                             ' does not exist on this server.</p></div>']
@@ -293,8 +293,9 @@ class Abe:
 
         abe.store.rollback()  # Close implicitly opened transaction.
 
-        start_response(status, [('Content-type', page['content_type']),
-                                ('Cache-Control', 'max-age=30')])
+        start_response(page['status'],
+                       [('Content-type', page['content_type']),
+                        ('Cache-Control', 'max-age=30')])
 
         tvars['title'] = flatten(page['title'])
         tvars['h1'] = flatten(page.get('h1') or page['title'])
@@ -306,7 +307,7 @@ class Abe:
         content = page['template'] % tvars
         if isinstance(content, unicode):
             content = content.encode('UTF-8')
-        return content
+        return [content]
 
     def get_handler(abe, cmd):
         return getattr(abe, 'handle_' + cmd, None)
@@ -853,6 +854,7 @@ class Abe:
             history = abe.store.export_address_history(
                 address, chain=page['chain'], max_rows=abe.address_history_rows_max)
         except DataStore.MalformedAddress:
+            page['status'] = '404 Not Found'
             body += ['<p>Not a valid address.</p>']
             body += ['</div>\n']
             return
@@ -872,6 +874,7 @@ class Abe:
         counts   = history['counts']
 
         if (not chains):
+            page['status'] = '404 Not Found'
             body += ['<p>Address not seen on the network.</p>']
             body += ['</div>\n']
             return
@@ -1595,7 +1598,7 @@ class Abe:
                 elif fmt in ("json", "jsonp"):
                     ret.append([
                             height, int(nTime), target, avg_target,
-                            difficulty, work, chain_work])
+                            difficulty, work, chain_work, nethash])
 
                 elif fmt == "svg":
                     ret += '<abe:nethash t="%d" d="%d"' \
@@ -1836,7 +1839,7 @@ def path_info_int(page, default):
 
 def format_time(nTime):
     import time
-    return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(int(nTime)))
+    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(nTime)))
 
 def format_satoshis(satoshis, chain):
     decimals = DEFAULT_DECIMALS if chain.decimals is None else chain.decimals
@@ -1937,6 +1940,11 @@ def serve(store):
     args = store.args
     abe = Abe(store, args)
 
+    # Hack preventing wsgiref.simple_server from resolving client addresses
+    bhs = __import__('BaseHTTPServer')
+    bhs.BaseHTTPRequestHandler.address_string = lambda x: x.client_address[0]
+    del(bhs)
+
     if args.query is not None:
         def start_response(status, headers):
             pass
@@ -1996,6 +2004,61 @@ def process_is_alive(pid):
             return False # no such process.
         raise
 
+def list_policies():
+    import pkgutil
+    import Chain
+    policies = []
+    for _, name, ispkg in pkgutil.iter_modules(path=[os.path.dirname(Chain.__file__)]):
+        if not ispkg:
+            policies.append(name)
+    return policies
+
+def show_policy(policy):
+    import inspect
+    import Chain
+    try:
+        chain = Chain.create(policy)
+    except ImportError as e:
+        print("%s: policy unavailable (%s)" % (policy, e.message))
+        return
+
+    print("%s:" % policy)
+
+    parents = []
+    for cls in type(chain).__mro__[1:]:
+        if cls == Chain.BaseChain:
+            break
+        parents.append(cls)
+    if parents:
+        print("  Inherits from:")
+        for cls in parents:
+            print("    %s" % cls.__name__)
+
+    params = []
+    for attr in chain.POLICY_ATTRS:
+        val = getattr(chain, attr, None)
+        if val is not None:
+            params.append((attr, val))
+    if params:
+        print("  Parameters:")
+        for attr, val in params:
+            try:
+                try:
+                    val = json.dumps(val)
+                except UnicodeError:
+                    if type(val) == bytes:
+                        # The value could be a magic number or address version.
+                        val = json.dumps(unicode(val, 'latin_1'))
+                    else:
+                        val = repr(val)
+            except TypeError as e:
+                val = repr(val)
+            print("    %s: %s" % (attr, val))
+
+    doc = inspect.getdoc(chain)
+    if doc is not None:
+        print("  %s" % doc.replace('\n', '\n  '))
+
 def create_conf():
     conf = {
         "port":                     None,
@@ -2003,6 +2066,7 @@ def create_conf():
         "query":                    None,
         "no_serve":                 None,
         "no_load":                  None,
+        "timezone":                 None,
         "debug":                    None,
         "static_path":              None,
         "document_root":            None,
@@ -2033,6 +2097,16 @@ def create_conf():
     return conf
 
 def main(argv):
+    if argv[0] == '--show-policy':
+        for policy in argv[1:] or list_policies():
+            show_policy(policy)
+        return 0
+    elif argv[0] == '--list-policies':
+        print("Available chain policies:")
+        for name in list_policies():
+            print("  %s" % name)
+        return 0
+
     args, argv = readconf.parse_argv(argv, create_conf())
 
     if not argv:
@@ -2045,6 +2119,8 @@ A Bitcoin block chain browser.
   --help                    Show this help message and exit.
   --version                 Show the program version and exit.
   --print-htdocs-directory  Show the static content directory name and exit.
+  --list-policies           Show the available policy names for --datadir.
+  --show-policy POLICY...   Describe the given policy.
   --query /q/COMMAND        Show the given URI content and exit.
   --config FILE             Read options from FILE.
 
@@ -2073,8 +2149,18 @@ See abe.conf for commented examples.""")
         import logging.config as logging_config
         logging_config.dictConfig(args.logging)
 
+    # Set timezone
+    if args.timezone:
+        os.environ['TZ'] = args.timezone
+
     if args.auto_agpl:
         import tarfile
+
+    # --rpc-load-mempool loops forever, make sure it's used with
+    # --no-load/--no-serve so users know the implications
+    if args.rpc_load_mempool and not (args.no_load or args.no_serve):
+        sys.stderr.write("Error: --rpc-load-mempool requires --no-serve\n")
+        return 1
 
     store = make_store(args)
     if (not args.no_serve):
